@@ -79,12 +79,13 @@ int main(int, char**)
             static ImVector<ImVec2> points;
             static ImVec2 scrolling(0.0f, 0.0f);
             if (ImGui::Button("Back to (0, 0)")) scrolling = ImVec2{0.0f, 0.0f};
-            ImGui::SameLine();
-            ImGui::Text(("scrolling: " + INTSTR(scrolling.x) + "," + INTSTR(scrolling.y)).c_str());
             static bool opt_enable_grid = true;
             static bool opt_enable_context_menu = true;
             static bool adding_point = false;
-
+            static bool finding_best_step = false;
+            static std::vector<int> current_shown_best_trace;
+            static bool active_method_nearest_city = false;
+            static std::vector<int> current_nearest_city_trace;
             // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
             // To use a child window instead we could use, e.g:
@@ -99,6 +100,8 @@ int main(int, char**)
             // Using InvisibleButton() as a convenience 1) it will advance the layout cursor and 2) allows us to use IsItemHovered()/IsItemActive()
             ImVec2 canvas_p0 = ImGui::GetCursorScreenPos();      // ImDrawList API uses screen coordinates!
             ImVec2 canvas_sz = ImGui::GetContentRegionAvail();   // Resize canvas to what's available
+            static int available_space_x = 400;
+            canvas_sz.x -= available_space_x;
             if (canvas_sz.x < 50.0f) canvas_sz.x = 50.0f;
             if (canvas_sz.y < 50.0f) canvas_sz.y = 50.0f;
             ImVec2 canvas_p1 = ImVec2(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
@@ -108,13 +111,46 @@ int main(int, char**)
             ImDrawList* draw_list = ImGui::GetWindowDrawList();
             draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
             draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
-
+            bool get_best_trace = false;
 
             const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
             const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
             ImGui::SameLine();
-            ImGui::Text(("origin: " + INTSTR(origin.x) + ", " + INTSTR(origin.y) + " adding_point = " + (adding_point ? "true" : "false")).c_str());
-            
+            ImGui::Text((INTSTR(io.Framerate) + " FPS.").c_str());
+            ImGui::SameLine();
+            if (ImGui::Button("canvas -")) available_space_x += 20;
+            ImGui::SameLine();
+            if (ImGui::Button("canvas +")) available_space_x -= 20;
+            ImGui::SameLine();
+            bool greedy_wants_next_step = false;
+            if (finding_best_step) 
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Next best trace"))
+                {
+                    std::vector<int> temp_trace = get_current_optimal_trace();
+                    
+                    if (temp_trace.size() == 0) 
+                    {
+                        is_optimal(0, true);
+                        finding_best_step = false;
+                    }
+                    else
+                    {
+                        current_shown_best_trace = temp_trace;
+                    }
+                }
+                if (finding_best_step) ImGui::BeginDisabled();
+                ImGui::SameLine();
+            }
+            else
+            if (active_method_nearest_city)
+            {
+                if (ImGui::Button("Next greedy step")) greedy_wants_next_step = true;
+                ImGui::BeginDisabled(); ImGui::SameLine();
+            }
+            if (ImGui::Button("Get best possible trace")) get_best_trace = true;
+            if (ImGui::Button("Get trace using greedy algorithm")) active_method_nearest_city = true;
             // This will catch our interactions
             ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
@@ -151,16 +187,18 @@ int main(int, char**)
                 //if (adding_line)
                 //    points.resize(points.size() - 2);
                 //adding_line = false;
-                if (ImGui::MenuItem("Remove last", NULL, false, points.Size > 0)) { points.resize(points.size() - 1); }
-                if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) { points.clear(); }
+                if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) { points.clear(); current_nearest_city_trace.clear(); current_shown_best_trace.clear();}
                 ImGui::EndPopup();
             }
 
             // Draw grid + all lines in the canvas
+            std::vector<std::vector<int>> distance_for_method = std::vector<std::vector<int>>(points.Size, std::vector<int>(points.Size));
             draw_list->PushClipRect(canvas_p0, canvas_p1, true);
             if (opt_enable_grid)
             {
-                const float GRID_STEP = 64.0f;
+                const float GRID_STEP = 50.0f;
+                draw_list->AddText(ImVec2(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y + GRID_STEP), IM_COL32(250, 0, 0, 250), "50");
+                draw_list->AddText(ImVec2(canvas_p0.x + scrolling.x + GRID_STEP, canvas_p0.y + scrolling.y), IM_COL32(250, 0, 0, 250), "50"); 
                 for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
                     if (scrolling.x - x == 0.0f) 
                     {
@@ -184,6 +222,7 @@ int main(int, char**)
             //ImGui::SetNextWindowPos(ImVec2(scrolling.x, scrolling.y));
             for (int n = 0; n < points.Size; n += 1)
             {
+                distance_for_method[n][n] = 0;
                 float min_dist_to_mouse = __FLT_MAX__;
                 draw_list->AddCircleFilled(ImVec2(ImVec2(origin.x + points[n].x, origin.y + points[n].y)), 6, IM_COL32(255, 255, 0, 255), 4);
                 for (int j = 0; j < n; j++)
@@ -194,7 +233,7 @@ int main(int, char**)
                     float dist = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 
                     float A = (y2-y1)*(y2-y1) + (x1-x2)*(x1-x2);
-                    //if (A == 0) A = 0.001f;
+                    if (A == 0) A = 0.001f;
                     float B = (y2-y1)*(x1*y2 - x2*y1);
                     float C = (x1-x2)*(x1-x2)*x3;
                     float D = y3*(x2-x1)*(y2-y1);
@@ -205,15 +244,51 @@ int main(int, char**)
                     float B1 = points[n].x - points[j].x;
                     float C1 = points[j].x * points[n].y - points[n].x * points[j].y;
                     float d = (A1 * mouse_pos_in_canvas.x + B1 * mouse_pos_in_canvas.y + C1) / (sqrt(A1*A1 + B1*B1)); //расстояние до полученной прямой
-                    if (20 > abs(d) && is_on_line && !hover_cleared)
+                    bool found_actual_trail = false;
+                    if (current_shown_best_trace.size() != 0)
+                    {
+                        for (int k = 0; k < current_shown_best_trace.size() - 1; k++)
+                        {
+                            if ((current_shown_best_trace[k] == n && current_shown_best_trace[k + 1] == j) || (current_shown_best_trace[k] == j && current_shown_best_trace[k + 1] == n))
+                            {
+                                found_actual_trail = true;
+                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                                break;
+                            }
+                        }
+                        if ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n))
+                        {
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                        }
+                    }
+                    if (current_nearest_city_trace.size() != 0)
+                    {
+                        for (int k = 0; k < current_nearest_city_trace.size() - 1; k++)
+                        {
+                            if ((current_nearest_city_trace[k] == n && current_nearest_city_trace[k + 1] == j) || (current_nearest_city_trace[k] == j && current_nearest_city_trace[k + 1] == n))
+                            {
+                                found_actual_trail = true;
+                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                                break;
+                            }
+                        }
+                        if ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n))
+                        {
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                        }
+                    }
+                    if (20 > abs(d) && is_on_line && !hover_cleared && !found_actual_trail)
                     {
                         hover_cleared = true;
+                        ImGui::SetTooltip(INTSTR(dist).c_str());
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 0, 0, 40), 2.0f);
                     }
                     else
                     {
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 40), 2.0f);
                     }
+                    distance_for_method[n][j] = dist;
+                    distance_for_method[j][n] = dist;
                 }
             }
             for (int n = 0; n < points.Size; n++)
@@ -221,7 +296,51 @@ int main(int, char**)
                 draw_list->AddText(ImVec2(origin.x + points[n].x + 2, origin.y + points[n].y), IM_COL32(255, 255, 255, 255), INTSTR(n + 1).c_str());
             }
             draw_list->PopClipRect();
-
+            if (greedy_wants_next_step)
+            {
+                method(points.Size, distance_for_method, current_nearest_city_trace.size());
+                
+            }
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            if (points.Size != 0 && ImGui::BeginTable("Current matrix", points.Size + 1, ImGuiTableFlags_Borders | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_SizingFixedSame))
+            {
+                for (int i = 0; i < points.Size + 1; i++)
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::TextDisabled(INTSTR(i).c_str());
+                }
+                for (int i = 0; i < points.Size; i++)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::TextDisabled(INTSTR(i + 1).c_str());
+                    for (int j = 0; j < points.Size; j++)
+                    {
+                        ImGui::TableSetColumnIndex(j + 1);
+                        ImGui::Text(INTSTR(distance_for_method[i][j]).c_str());
+                    }
+                }
+                ImGui::EndTable();
+            }
+            if (finding_best_step || active_method_nearest_city) ImGui::EndDisabled();
+            
+            int current_best = 0;
+            if (current_shown_best_trace.size()!=0)
+            {
+                for (int i = 0; i < (current_shown_best_trace.size() - 1); i++)
+                {
+                    current_best += distance_for_method[current_shown_best_trace[i]][current_shown_best_trace[i+1]];
+                }
+                current_best += distance_for_method[current_shown_best_trace[0]][current_shown_best_trace[current_shown_best_trace.size() - 1]];
+            }
+            ImGui::Text(("Current best trace is " + INTSTR(current_best)).c_str());
+            if (get_best_trace)
+            {
+                finding_best_step = true;
+                print_optimal(distance_for_method);
+            }
+            ImGui::EndGroup();
             ImGui::End();
         }
 
