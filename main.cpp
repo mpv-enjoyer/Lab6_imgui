@@ -180,12 +180,34 @@ int main(int, char**)
                         draw_list->AddLine(ImVec2(canvas_p0.x, canvas_p0.y + y), ImVec2(canvas_p1.x, canvas_p0.y + y), IM_COL32(200, 200, 200, 40));
                     }
             }
+            bool hover_cleared = false;
             for (int n = 0; n < points.Size; n += 1)
             {
                 draw_list->AddCircleFilled(ImVec2(ImVec2(origin.x + points[n].x, origin.y + points[n].y)), 6, IM_COL32(255, 255, 0, 255), 4);
                 for (int j = 0; j < n; j++)
                 {
-                    draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 40), 2.0f);
+                    float x1 = points[n].x + origin.x; float y1 = points[n].y + origin.y;
+                    float x2 = points[j].x + origin.x; float y2 = points[j].y + origin.y;
+                    ImVec2 ellipse_center = ImVec2((x1 + x2) / 2, (y1 + y2) / 2);
+                    float dist = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+                    float costilt = (x2 - x1) / dist;
+                    float sintilt = (y2 - y1) / dist;
+                    float a = 1;
+                    float RR = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) / 2;
+                    float b = //unfinished.
+
+                    float A = points[j].y - points[n].y;
+                    float B = points[n].x - points[j].x;
+                    float C = points[j].x * points[n].y - points[n].x * points[j].y;
+                    float d = (A * mouse_pos_in_canvas.x + B * mouse_pos_in_canvas.y + C) / (sqrt(A*A + B*B));
+                    if (20 > abs(d))
+                    {
+                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 0, 0, 40), 2.0f);
+                    }
+                    else
+                    {
+                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 40), 2.0f);
+                    }
                 }
             }
             for (int n = 0; n < points.Size; n++)
