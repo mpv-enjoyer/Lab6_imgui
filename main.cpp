@@ -86,6 +86,8 @@ int main(int, char**)
             static std::vector<int> current_shown_best_trace;
             static bool active_method_nearest_city = false;
             static std::vector<int> current_nearest_city_trace;
+            static int current_start_from = 0;
+            static int current_step = 0;
             // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
             // To use a child window instead we could use, e.g:
@@ -149,13 +151,20 @@ int main(int, char**)
                 if (ImGui::Button("Next greedy step")) greedy_wants_next_step = true;
                 ImGui::BeginDisabled(); ImGui::SameLine();
             }
-            if (ImGui::Button("Get best possible trace")) get_best_trace = true;
-            if (ImGui::Button("Get trace using greedy algorithm")) active_method_nearest_city = true;
+            if (ImGui::Button("Get best possible trace")) 
+            {
+                get_best_trace = true;
+            }
+            if (ImGui::Button("Get trace using greedy algorithm")) 
+            {
+                ImGui::BeginDisabled();
+                active_method_nearest_city = true;
+                current_start_from = randomnumber(0, points.Size - 1);
+            }
             // This will catch our interactions
             ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
             const bool is_active = ImGui::IsItemActive();   // Held
-            // Add first and second point
             if (is_hovered && !adding_point && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
                 adding_point = true;
@@ -252,13 +261,13 @@ int main(int, char**)
                             if ((current_shown_best_trace[k] == n && current_shown_best_trace[k + 1] == j) || (current_shown_best_trace[k] == j && current_shown_best_trace[k + 1] == n))
                             {
                                 found_actual_trail = true;
-                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 5.0f);
                                 break;
                             }
                         }
                         if ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n))
                         {
-                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 5.0f);
                         }
                     }
                     if (current_nearest_city_trace.size() != 0)
@@ -268,24 +277,24 @@ int main(int, char**)
                             if ((current_nearest_city_trace[k] == n && current_nearest_city_trace[k + 1] == j) || (current_nearest_city_trace[k] == j && current_nearest_city_trace[k + 1] == n))
                             {
                                 found_actual_trail = true;
-                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                                draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 255), 3.0f);
                                 break;
                             }
                         }
                         if ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n))
                         {
-                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 4.0f);
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 255), 3.0f);
                         }
                     }
                     if (20 > abs(d) && is_on_line && !hover_cleared && !found_actual_trail)
                     {
                         hover_cleared = true;
                         ImGui::SetTooltip(INTSTR(dist).c_str());
-                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 0, 0, 40), 2.0f);
+                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(100, 0, 0, 100), 2.0f);
                     }
                     else
                     {
-                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 40), 2.0f);
+                        draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(100, 100, 0, 100), 2.0f);
                     }
                     distance_for_method[n][j] = dist;
                     distance_for_method[j][n] = dist;
@@ -298,8 +307,16 @@ int main(int, char**)
             draw_list->PopClipRect();
             if (greedy_wants_next_step)
             {
-                method(points.Size, distance_for_method, current_nearest_city_trace.size());
-                
+                greedy_wants_next_step = false;
+                current_step++;
+                std::vector<int> temp_ = method(points.Size, distance_for_method, current_step, current_start_from);
+                if (temp_.size() == 0) 
+                {
+                    active_method_nearest_city = false;
+                    current_step = 0;
+                }
+                else current_nearest_city_trace = temp_;
+                if (!active_method_nearest_city) ImGui::EndDisabled();
             }
             ImGui::SameLine();
             ImGui::BeginGroup();
@@ -334,7 +351,17 @@ int main(int, char**)
                 }
                 current_best += distance_for_method[current_shown_best_trace[0]][current_shown_best_trace[current_shown_best_trace.size() - 1]];
             }
+            int current_method_best = 0;
+            if (current_nearest_city_trace.size()!=0)
+            {
+                for (int i = 0; i < (current_nearest_city_trace.size() - 1); i++)
+                {
+                    current_method_best += distance_for_method[current_nearest_city_trace[i]][current_nearest_city_trace[i+1]];
+                }
+                current_method_best += distance_for_method[current_nearest_city_trace[0]][current_nearest_city_trace[current_nearest_city_trace.size() - 1]];
+            }
             ImGui::Text(("Current best trace is " + INTSTR(current_best)).c_str());
+            ImGui::Text(("Current greedy trace is " + INTSTR(current_method_best)).c_str());
             if (get_best_trace)
             {
                 finding_best_step = true;

@@ -40,7 +40,7 @@ static void glfw_error_callback(int error, const char* description)
 #include <ctime>
 
 #define INTSTR(int) std::to_string(int)
-std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step);
+std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step, int start_from);
 
 // Функции для вычисления точного оптимального значения
 void print_optimal(std::vector<std::vector<int>>& distance);

@@ -1,17 +1,17 @@
 #include "main.h"
 
 std::vector<std::vector<int>> optimal_stack_INTERNAL;
-std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step)
+std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step, int start_from)
 {
     std::vector<bool> X = std::vector<bool>(N, false); // Если мы уже входили в город, пишем 1
     std::vector<int> trace;
     int overall_distance = 0;
-    int x = randomnumber(0, 4);
+    int x = start_from;
     X[x] = true;
     trace.push_back(x);
     std::cout << "1) Trace " << to_string(trace) << " Select " << x << "\n";
 
-    for (int i = 1; (i < step + 1) && (i < N); i++) //общий шаг
+    for (int i = 1; i < N; i++) //общий шаг
     {
         int current_town = x;
         std::vector<int> current_min_pairs;
@@ -45,13 +45,13 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
         X[current_min_to] = true;
         overall_distance += current_min_distance_in_pairs;
         print_step(i + 1, trace, x, overall_distance, distance);
+        if (step == i) return trace;
     }
     overall_distance += distance[trace[0]][trace[N-1]];
 
     std::cout << "Final: Trace " << to_string(trace) << " Distance " << overall_distance << "\n";
-
-    std::cout << "Calculating best possible result:\n";
-    print_optimal(distance);
+    return {}; 
+    return trace;
 }
 
 // Код функций для вычисления точного оптимального значения
