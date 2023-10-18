@@ -3,6 +3,7 @@
 std::vector<std::vector<int>> optimal_stack_INTERNAL;
 std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step, int start_from)
 {
+    if (distance.size() == 0) return {};
     std::vector<bool> X = std::vector<bool>(N, false); // Если мы уже входили в город, пишем 1
     std::vector<int> trace;
     int overall_distance = 0;

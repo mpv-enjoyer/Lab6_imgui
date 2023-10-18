@@ -151,10 +151,11 @@ int main(int, char**)
                 if (ImGui::Button("Next greedy step")) greedy_wants_next_step = true;
                 ImGui::BeginDisabled(); ImGui::SameLine();
             }
-            if (ImGui::Button("Get best possible trace")) 
+            if (points.Size < 11 && ImGui::Button("Get best possible trace")) 
             {
                 get_best_trace = true;
             }
+            ImGui::SameLine();
             if (ImGui::Button("Get trace using greedy algorithm")) 
             {
                 ImGui::BeginDisabled();
