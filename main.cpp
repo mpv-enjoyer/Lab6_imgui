@@ -151,7 +151,7 @@ int main(int, char**)
                 //if (adding_line)
                 //    points.resize(points.size() - 2);
                 //adding_line = false;
-                if (ImGui::MenuItem("Remove one", NULL, false, points.Size > 0)) { points.resize(points.size() - 2); }
+                if (ImGui::MenuItem("Remove last", NULL, false, points.Size > 0)) { points.resize(points.size() - 1); }
                 if (ImGui::MenuItem("Remove all", NULL, false, points.Size > 0)) { points.clear(); }
                 ImGui::EndPopup();
             }
@@ -181,27 +181,33 @@ int main(int, char**)
                     }
             }
             bool hover_cleared = false;
+            //ImGui::SetNextWindowPos(ImVec2(scrolling.x, scrolling.y));
             for (int n = 0; n < points.Size; n += 1)
             {
+                float min_dist_to_mouse = __FLT_MAX__;
                 draw_list->AddCircleFilled(ImVec2(ImVec2(origin.x + points[n].x, origin.y + points[n].y)), 6, IM_COL32(255, 255, 0, 255), 4);
                 for (int j = 0; j < n; j++)
                 {
                     float x1 = points[n].x + origin.x; float y1 = points[n].y + origin.y;
                     float x2 = points[j].x + origin.x; float y2 = points[j].y + origin.y;
-                    ImVec2 ellipse_center = ImVec2((x1 + x2) / 2, (y1 + y2) / 2);
+                    float x3 = mouse_pos_in_canvas.x + origin.x; float y3 = mouse_pos_in_canvas.y + origin.y;
                     float dist = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-                    float costilt = (x2 - x1) / dist;
-                    float sintilt = (y2 - y1) / dist;
-                    float a = 1;
-                    float RR = ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) / 2;
-                    float b = //unfinished.
 
-                    float A = points[j].y - points[n].y;
-                    float B = points[n].x - points[j].x;
-                    float C = points[j].x * points[n].y - points[n].x * points[j].y;
-                    float d = (A * mouse_pos_in_canvas.x + B * mouse_pos_in_canvas.y + C) / (sqrt(A*A + B*B));
-                    if (20 > abs(d))
+                    float A = (y2-y1)*(y2-y1) + (x1-x2)*(x1-x2);
+                    //if (A == 0) A = 0.001f;
+                    float B = (y2-y1)*(x1*y2 - x2*y1);
+                    float C = (x1-x2)*(x1-x2)*x3;
+                    float D = y3*(x2-x1)*(y2-y1);
+                    float x0 = ( B + C + D ) / A; //нормаль к полученной прямой, точка соприкосновения.
+                    float y0 = (x1*y2 - x2*y1 - x0*(y2-y1))/(x1-x2);
+                    bool is_on_line = (x2 - x0) * (x1 - x0) < 0;
+                    float A1 = points[j].y - points[n].y;
+                    float B1 = points[n].x - points[j].x;
+                    float C1 = points[j].x * points[n].y - points[n].x * points[j].y;
+                    float d = (A1 * mouse_pos_in_canvas.x + B1 * mouse_pos_in_canvas.y + C1) / (sqrt(A1*A1 + B1*B1)); //расстояние до полученной прямой
+                    if (20 > abs(d) && is_on_line && !hover_cleared)
                     {
+                        hover_cleared = true;
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 0, 0, 40), 2.0f);
                     }
                     else
