@@ -275,7 +275,7 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if (current_shown_best_trace.size() > 2 && (current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n))
+                        if (current_shown_best_trace.size() > 2 && ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n)))
                         {
                             draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 155, 0, 255), 5.0f);
                         }
@@ -291,7 +291,7 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if (current_nearest_city_trace.size() > 2 && (current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n))
+                        if (current_nearest_city_trace.size() > 2 && ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n)))
                         {
                             draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 155, 0, 255), 3.0f);
                         }
@@ -376,13 +376,16 @@ int main(int, char**)
                 }
                 current_method_best += distance_for_method[current_nearest_city_trace[0]][current_nearest_city_trace[current_nearest_city_trace.size() - 1]];
             }
-            ImGui::Text(("Current best trace is " + INTSTR(current_best)).c_str());
-            ImGui::Text(("Current greedy trace is " + INTSTR(current_method_best)).c_str());
+            ImGui::TextWrapped(("Current best trace is " + INTSTR(current_best)).c_str());
+            ImGui::TextWrapped(("Current greedy trace is " + INTSTR(current_method_best)).c_str());
+			ImGui::Separator();
             if (get_best_trace)
             {
                 finding_best_step = true;
                 print_optimal(distance_for_method);
             }
+			ImGui::TextWrapped("right click: move and delete all button");
+			ImGui::TextWrapped("left click: create points");
             ImGui::EndGroup();
             ImGui::End();
         }

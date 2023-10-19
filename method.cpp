@@ -47,6 +47,7 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
                 current_min_distance_in_pairs = distance[trace[j]][current_min_pairs[j]];
             }
         }
+		int show_current_min_from = trace[current_min_from];
 		if (current_min_from == 0 && !enable_dumb_insert) current_min_from = -1; //обход, чтобы дать возможность вставлять в начало
         trace.insert(trace.begin() + current_min_from + 1, current_min_to);
         X[current_min_to] = true;
@@ -58,7 +59,7 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
         
         if (do_show_steps) 
 		{
-			print_step(i + 1, trace, current_min_from + 1, current_min_to, overall_distance, current_min_distance_in_pairs);
+			print_step(i + 1, trace, show_current_min_from, current_min_to, overall_distance, current_min_distance_in_pairs);
 		}
         if (step == i) return trace;
     }
