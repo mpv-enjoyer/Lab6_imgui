@@ -90,6 +90,9 @@ int main(int, char**)
             static std::vector<int> current_nearest_city_trace;
             static int current_start_from = 0;
             static int current_step = 0;
+            static bool view_best_checkbox = true;
+            static bool view_fast_checkbox = true;
+            static bool view_nodes_checkbox = true;
             // Typically you would use a BeginChild()/EndChild() pair to benefit from a clipping region + own scrolling.
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing + PushClipRect/PopClipRect() calls.
             // To use a child window instead we could use, e.g:
@@ -268,6 +271,11 @@ int main(int, char**)
                     {
                         for (int k = 0; k < current_shown_best_trace.size() - 1; k++)
                         {
+							if (!view_best_checkbox)
+							{
+								found_actual_trail = true;
+								break;
+							}
                             if ((current_shown_best_trace[k] == n && current_shown_best_trace[k + 1] == j) || (current_shown_best_trace[k] == j && current_shown_best_trace[k + 1] == n))
                             {
                                 found_actual_trail = true;
@@ -275,7 +283,7 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if (current_shown_best_trace.size() > 2 && ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n)))
+                        if (view_best_checkbox && current_shown_best_trace.size() > 2 && ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n)))
                         {
                             draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 155, 0, 255), 5.0f);
                         }
@@ -284,6 +292,11 @@ int main(int, char**)
                     {
                         for (int k = 0; k < current_nearest_city_trace.size() - 1; k++)
                         {
+							if (!view_fast_checkbox)
+							{
+								found_actual_trail = true;
+								break;
+							}
                             if ((current_nearest_city_trace[k] == n && current_nearest_city_trace[k + 1] == j) || (current_nearest_city_trace[k] == j && current_nearest_city_trace[k + 1] == n))
                             {
                                 found_actual_trail = true;
@@ -291,7 +304,7 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if (current_nearest_city_trace.size() > 2 && ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n)))
+                        if (view_fast_checkbox && current_nearest_city_trace.size() > 2 && ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n)))
                         {
                             draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 155, 0, 255), 3.0f);
                         }
@@ -304,7 +317,7 @@ int main(int, char**)
                         
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(100, 0, 0, 100), 2.0f);
                     }
-                    else
+                    else if (view_nodes_checkbox)
                     {
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(100, 100, 0, 100), 2.0f);
                     }
@@ -378,6 +391,11 @@ int main(int, char**)
             }
             ImGui::TextWrapped(("Current best trace is " + INTSTR(current_best)).c_str());
             ImGui::TextWrapped(("Current greedy trace is " + INTSTR(current_method_best)).c_str());
+            
+			ImGui::Separator();
+			ImGui::Checkbox("show best nodes", &view_best_checkbox);
+            ImGui::Checkbox("show greedy nodes", &view_fast_checkbox);
+            ImGui::Checkbox("show all nodes", &view_nodes_checkbox);
 			ImGui::Separator();
             if (get_best_trace)
             {

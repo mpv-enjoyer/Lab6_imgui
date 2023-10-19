@@ -35,6 +35,14 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
 			if (do_show_steps) std::cout << trace[j] << " neighbors distance: " << to_string(output_neighbors_distance) << "\n";
             current_min_pairs.push_back(current_min_town);
         }
+        if (do_show_steps) 
+        {
+            std::cout << "neighbors winners (from | to == distance):\n";
+            for (int j = 0; j < i; j++)
+            {
+                std::cout << trace[j] << " | " << current_min_pairs[j] << " == " << distance[trace[j]][current_min_pairs[j]] <<"\n";
+            }
+        }
         int current_min_distance_in_pairs = __INT_MAX__;
         int current_min_to = -1;
         int current_min_from = -1;
