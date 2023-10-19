@@ -29,19 +29,18 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Lab6 thingy", nullptr, nullptr);
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
-
+	
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
@@ -62,6 +61,7 @@ int main(int, char**)
     io.IniFilename = nullptr;
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
+	io.IniFilename = nullptr;
     while (!glfwWindowShouldClose(window))
 #endif
     {
@@ -76,9 +76,11 @@ int main(int, char**)
         ImGui::SetNextWindowSize(viewport->WorkSize);
         if (ImGui::Begin("Lab6", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings))
         {
+			static bool enable_dumb_insert = false;
             static ImVector<ImVec2> points;
             static ImVec2 scrolling(0.0f, 0.0f);
             if (ImGui::Button("Back to (0, 0)")) scrolling = ImVec2{0.0f, 0.0f};
+			
             static bool opt_enable_grid = true;
             static bool opt_enable_context_menu = true;
             static bool adding_point = false;
@@ -118,8 +120,10 @@ int main(int, char**)
             const ImVec2 origin(canvas_p0.x + scrolling.x, canvas_p0.y + scrolling.y); // Lock scrolled origin
             const ImVec2 mouse_pos_in_canvas(io.MousePos.x - origin.x, io.MousePos.y - origin.y);
             ImGui::SameLine();
-            ImGui::Text((INTSTR(io.Framerate) + " FPS.").c_str());
+            ImGui::Text((INTSTR((int)io.Framerate) + " FPS.").c_str());
             ImGui::SameLine();
+			ImGui::Checkbox("Dumb insert", &enable_dumb_insert);
+			ImGui::SameLine();
             if (ImGui::Button("canvas -")) available_space_x += 20;
             ImGui::SameLine();
             if (ImGui::Button("canvas +")) available_space_x -= 20;
@@ -163,6 +167,7 @@ int main(int, char**)
                 current_start_from = randomnumber(0, points.Size - 1);
             }
             // This will catch our interactions
+			if (finding_best_step || active_method_nearest_city) ImGui::EndDisabled();
             ImGui::InvisibleButton("canvas", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
             const bool is_hovered = ImGui::IsItemHovered(); // Hovered
             const bool is_active = ImGui::IsItemActive();   // Held
@@ -174,7 +179,12 @@ int main(int, char**)
             {
                 if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
                 {
-                    points.push_back(mouse_pos_in_canvas);
+					if (!active_method_nearest_city && !finding_best_step) 
+					{
+						points.push_back(mouse_pos_in_canvas);
+						current_nearest_city_trace.clear();
+						current_shown_best_trace.clear();
+					}
                     adding_point = false;
                 }
             }
@@ -190,9 +200,9 @@ int main(int, char**)
 
             // Context menu (under default mouse threshold)
             ImVec2 drag_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right);
-            if (opt_enable_context_menu && drag_delta.x == 0.0f && drag_delta.y == 0.0f)
+            if (opt_enable_context_menu && drag_delta.x == 0.0f && drag_delta.y == 0.0f && !active_method_nearest_city && !finding_best_step)
                 ImGui::OpenPopupOnItemClick("context", ImGuiPopupFlags_MouseButtonRight);
-            if (ImGui::BeginPopup("context"))
+            if (!active_method_nearest_city && !finding_best_step && ImGui::BeginPopup("context"))
             {
                 //if (adding_line)
                 //    points.resize(points.size() - 2);
@@ -229,6 +239,7 @@ int main(int, char**)
                     }
             }
             bool hover_cleared = false;
+			std::string hover_tooltip_text;
             //ImGui::SetNextWindowPos(ImVec2(scrolling.x, scrolling.y));
             for (int n = 0; n < points.Size; n += 1)
             {
@@ -241,13 +252,11 @@ int main(int, char**)
                     float x2 = points[j].x + origin.x; float y2 = points[j].y + origin.y;
                     float x3 = mouse_pos_in_canvas.x + origin.x; float y3 = mouse_pos_in_canvas.y + origin.y;
                     float dist = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-
                     float A = (y2-y1)*(y2-y1) + (x1-x2)*(x1-x2);
-                    if (A == 0) A = 0.001f;
                     float B = (y2-y1)*(x1*y2 - x2*y1);
                     float C = (x1-x2)*(x1-x2)*x3;
                     float D = y3*(x2-x1)*(y2-y1);
-                    float x0 = ( B + C + D ) / A; //нормаль к полученной прямой, точка соприкосновения.
+                    float x0 = A == 0 ? 0 : ( B + C + D ) / A; //нормаль к полученной прямой, точка соприкосновения.
                     float y0 = (x1*y2 - x2*y1 - x0*(y2-y1))/(x1-x2);
                     bool is_on_line = (x2 - x0) * (x1 - x0) < 0;
                     float A1 = points[j].y - points[n].y;
@@ -266,9 +275,9 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if ((current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n))
+                        if (current_shown_best_trace.size() > 2 && (current_shown_best_trace[0] == n && current_shown_best_trace[current_shown_best_trace.size() - 1] == j) || (current_shown_best_trace[0] == j && current_shown_best_trace[current_shown_best_trace.size() - 1] == n))
                         {
-                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 255, 0, 255), 5.0f);
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(0, 155, 0, 255), 5.0f);
                         }
                     }
                     if (current_nearest_city_trace.size() != 0)
@@ -282,15 +291,17 @@ int main(int, char**)
                                 break;
                             }
                         }
-                        if ((current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n))
+                        if (current_nearest_city_trace.size() > 2 && (current_nearest_city_trace[0] == n && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == j) || (current_nearest_city_trace[0] == j && current_nearest_city_trace[current_nearest_city_trace.size() - 1] == n))
                         {
-                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 255, 0, 255), 3.0f);
+                            draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(255, 155, 0, 255), 3.0f);
                         }
                     }
-                    if (20 > abs(d) && is_on_line && !hover_cleared && !found_actual_trail)
+                    if (20 > abs(d) && is_on_line && !found_actual_trail)
                     {
+						if (hover_cleared) hover_tooltip_text+="\n";
+						hover_tooltip_text+=INTSTR(dist);
                         hover_cleared = true;
-                        ImGui::SetTooltip(INTSTR(dist).c_str());
+                        
                         draw_list->AddLine(ImVec2(origin.x + points[n].x, origin.y + points[n].y), ImVec2(origin.x + points[j].x, origin.y + points[j].y), IM_COL32(100, 0, 0, 100), 2.0f);
                     }
                     else
@@ -301,6 +312,10 @@ int main(int, char**)
                     distance_for_method[j][n] = dist;
                 }
             }
+			if (hover_cleared)
+			{
+				ImGui::SetTooltip(hover_tooltip_text.c_str());
+			}
             for (int n = 0; n < points.Size; n++)
             {
                 draw_list->AddText(ImVec2(origin.x + points[n].x + 2, origin.y + points[n].y), IM_COL32(255, 255, 255, 255), INTSTR(n + 1).c_str());
@@ -310,14 +325,14 @@ int main(int, char**)
             {
                 greedy_wants_next_step = false;
                 current_step++;
-                std::vector<int> temp_ = method(points.Size, distance_for_method, current_step, current_start_from);
+                std::vector<int> temp_ = method(points.Size, distance_for_method, current_step, current_start_from, enable_dumb_insert);
                 if (temp_.size() == 0) 
                 {
                     active_method_nearest_city = false;
                     current_step = 0;
                 }
                 else current_nearest_city_trace = temp_;
-                if (!active_method_nearest_city) ImGui::EndDisabled();
+                //if (!active_method_nearest_city) ImGui::EndDisabled();
             }
             ImGui::SameLine();
             ImGui::BeginGroup();
@@ -341,7 +356,7 @@ int main(int, char**)
                 }
                 ImGui::EndTable();
             }
-            if (finding_best_step || active_method_nearest_city) ImGui::EndDisabled();
+            
             
             int current_best = 0;
             if (current_shown_best_trace.size()!=0)

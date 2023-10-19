@@ -1,16 +1,17 @@
 #include "main.h"
 
 std::vector<std::vector<int>> optimal_stack_INTERNAL;
-std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step, int start_from)
+std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step, int start_from, bool enable_dumb_insert)
 {
     if (distance.size() == 0) return {};
     std::vector<bool> X = std::vector<bool>(N, false); // Если мы уже входили в город, пишем 1
     std::vector<int> trace;
     int overall_distance = 0;
     int x = start_from;
+	bool do_show_steps = (step == N);
     X[x] = true;
     trace.push_back(x);
-    std::cout << "1) Trace " << to_string(trace) << " Select " << x << "\n";
+	if (do_show_steps) std::cout << "1) Trace " << to_string(trace) << " Select " << x << "\n";
 
     for (int i = 1; i < N; i++) //общий шаг
     {
@@ -20,14 +21,18 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
         {
             int current_min_distance = __INT_MAX__;
             int current_min_town = -1;
+			std::vector<int> output_neighbors_distance;
             for (int k = 0; k < N; k++)
             {
+				if (!X[k]) output_neighbors_distance.push_back(distance[trace[j]][k]);
+				else output_neighbors_distance.push_back(-1);
                 if (!X[k] && distance[trace[j]][k] < current_min_distance)
                 {
                     current_min_distance = distance[trace[j]][k];
                     current_min_town = k;
                 }
             }
+			if (do_show_steps) std::cout << trace[j] << " neighbors distance: " << to_string(output_neighbors_distance) << "\n";
             current_min_pairs.push_back(current_min_town);
         }
         int current_min_distance_in_pairs = __INT_MAX__;
@@ -42,10 +47,19 @@ std::vector<int> method(int N, std::vector<std::vector<int>>& distance, int step
                 current_min_distance_in_pairs = distance[trace[j]][current_min_pairs[j]];
             }
         }
+		if (current_min_from == 0 && !enable_dumb_insert) current_min_from = -1; //обход, чтобы дать возможность вставлять в начало
         trace.insert(trace.begin() + current_min_from + 1, current_min_to);
         X[current_min_to] = true;
-        overall_distance += current_min_distance_in_pairs;
-        print_step(i + 1, trace, x, overall_distance, distance);
+		overall_distance = 0;
+		for (int j = 0; j < trace.size()-1; j++)
+		{
+			overall_distance += distance[trace[j]][trace[j+1]];
+		}
+        
+        if (do_show_steps) 
+		{
+			print_step(i + 1, trace, current_min_from + 1, current_min_to, overall_distance, current_min_distance_in_pairs);
+		}
         if (step == i) return trace;
     }
     overall_distance += distance[trace[0]][trace[N-1]];
@@ -137,10 +151,10 @@ int randomnumber(int included_min, int included_max)
     dist(rng);
     return dist(rng); 
 }
-void print_step(int step, std::vector<int> trace, int selected_town, int overall_distance, std::vector<std::vector<int>>& distance)
+void print_step(int step, std::vector<int> trace, int selected_town_in, int selected_town_out, int overall_distance, int distance)
 {
-    std::cout << step << ") Trace " << to_string(trace) << " Select " << selected_town 
-    << " Distance " << distance[trace[trace.size()-2]][trace[trace.size()-1]] << " Overall Distance " << overall_distance << "\n";
+    std::cout << step << ") Trace " << to_string(trace) << " Select " << selected_town_in << "-->" << selected_town_out
+    << " Distance " << distance << " Overall Distance " << overall_distance << "\n";
     return;
 }
 // ...
